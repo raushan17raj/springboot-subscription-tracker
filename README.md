@@ -60,3 +60,9 @@ The application follows a standard **Controller-Service-Repository** layered arc
 ```bash
 git clone git@github.com:raushan17raj/springboot-subscription-tracker.git
 cd subsentry
+
+```
+### Follow API documentation 
+```declarative
+http://localhost:8080/api-doc.html | http:<DOMAIN>:<PORT>/api-doc.html
+```

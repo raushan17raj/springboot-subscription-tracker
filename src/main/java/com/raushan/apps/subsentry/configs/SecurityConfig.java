@@ -55,7 +55,7 @@ public class SecurityConfig {
 
             // Define authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // Public auth endpoints
+                        .requestMatchers("/api/auth/**", "/api-doc.html").permitAll() // Public auth endpoints
                         .requestMatchers("/api/users/**").hasRole("ADMIN") // Only ADMIN can access user management
                         .requestMatchers("/api/subscriptions/**").hasRole("USER") // Only USER can access their subscriptions
                         .anyRequest().authenticated() // All other requests need login

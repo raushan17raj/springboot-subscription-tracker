@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring Boot Subscription Tracker API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f5f5f4; }
+        ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+
+        /* Chart Container Strict Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container { height: 350px; }
+        }
+
+        .code-block {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        
+        /* Fade in animation */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 antialiased selection:bg-amber-200 selection:text-amber-900">
+
+    <!-- Chosen Palette: Warm Sand & Amber (Minimalist, Calm Harmony) -->
+    <!-- Palette Hex: Bg #fafaf9 (stone-50), Surface #ffffff, Text #292524 (stone-800), Accent #d97706 (amber-600), Border #e7e5e4 (stone-200) -->
+
+    <!-- Application Structure Plan: 
+         1. Header: Quick context and Base URL reference.
+         2. Demo Dashboard (The 'Why'): Visualizes the domain (Subscriptions) using Charts to show what the API enables (Spending analysis, Categories).
+         3. Auth Flow (The 'How'): Interactive stepper visualizing the JWT process required to access the API.
+         4. API Explorer (The 'What'): A split-pane interactive documentation viewer.
+            - Sidebar: Navigation by Resource (Auth, Subscriptions, Users).
+            - Main: Dynamic content area showing endpoint details, params, and a 'Simulate Request' playground.
+         5. Data Models & Status: Reference cards for objects and error codes.
+         This structure moves from "Concept" -> "Access" -> "Usage" -> "Reference", prioritizing understanding over linear listing.
+    -->
+
+    <!-- Visualization & Content Choices:
+         1. Subscription Category Distribution (Donut Chart):
+            - Goal: Inform/Organize. Shows valid values for the 'category' field in a visual way.
+            - Interaction: Hover for details.
+            - Justification: Helps developers visualize the data domain immediately.
+            - Library: Chart.js (Canvas).
+         2. Billing Cycle Frequency (Bar Chart):
+            - Goal: Compare. visualizes the 'billingCycle' Enum options.
+            - Interaction: visual comparison.
+            - Justification: Clarifies the Enum constraints defined in the Data Model.
+            - Library: Chart.js (Canvas).
+         3. Request/Response Simulator (Interactive UI):
+            - Goal: Change/Engage. Allows users to click 'Send' and see the JSON response.
+            - Interaction: Button click updates DOM.
+            - Justification: Active learning is better than passive reading of JSON blocks.
+            - Method: Vanilla JS.
+         4. Auth Flow Steps (CSS/JS Stepper):
+            - Goal: Inform process.
+            - Interaction: Clicking steps shows description.
+            - Justification: Explains the abstract JWT flow concretely.
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <div id="app" class="flex flex-col min-h-screen">
+        
+        <!-- Navigation -->
+        <nav class="bg-white border-b border-stone-200 sticky top-0 z-50 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center text-white font-bold">
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                        <span class="font-bold text-xl tracking-tight text-stone-800">SubTracker <span class="text-amber-600">API</span></span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="hidden md:flex items-center px-3 py-1 bg-stone-100 rounded-full border border-stone-200 text-sm font-mono text-stone-600">
+                            <span class="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
+                            http://localhost:8080
+                        </div>
+                        <a href="#explorer" class="text-sm font-medium text-stone-600 hover:text-amber-600 transition-colors">Documentation</a>
+                        <a href="#models" class="text-sm font-medium text-stone-600 hover:text-amber-600 transition-colors">Models</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Hero / Intro -->
+        <header class="bg-white border-b border-stone-200 py-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-3xl mx-auto">
+                    <h1 class="text-4xl font-extrabold text-stone-900 tracking-tight sm:text-5xl mb-4">
+                        Build Smarter <span class="text-amber-600">Subscription</span> Managers
+                    </h1>
+                    <p class="text-lg text-stone-600 mb-8">
+                        A robust RESTful API for tracking services, billing cycles, and expenses. 
+                        Secured with JWT and built for scalability.
+                    </p>
+                    <div class="flex justify-center gap-4">
+                        <button onclick="scrollToSection('explorer')" class="px-6 py-3 bg-stone-900 text-white font-medium rounded-lg hover:bg-stone-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                            Explore Endpoints
+                        </button>
+                        <button onclick="scrollToSection('context')" class="px-6 py-3 bg-white text-stone-700 border border-stone-300 font-medium rounded-lg hover:bg-stone-50 transition-all">
+                            View Data Context
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Context & Visualization Section -->
+        <section id="context" class="py-12 bg-stone-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-10 text-center">
+                    <h2 class="text-2xl font-bold text-stone-900">API Domain Context</h2>
+                    <p class="mt-2 text-stone-600 max-w-2xl mx-auto">
+                        Understanding the data you will be working with. The API is designed to handle various subscription types and billing frequencies.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Chart 1: Categories -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 flex flex-col">
+                        <div class="mb-4">
+                            <h3 class="text-lg font-bold text-stone-800 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-pie text-amber-500"></i> Supported Categories
+                            </h3>
+                            <p class="text-sm text-stone-500">
+                                Distribution of subscription types this API helps manage.
+                            </p>
+                        </div>
+                        <div class="flex-grow flex items-center justify-center bg-stone-50 rounded-lg p-4">
+                            <!-- Chart Container -->
+                            <div class="chart-container">
+                                <canvas id="categoriesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Billing Cycles -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 flex flex-col">
+                        <div class="mb-4">
+                            <h3 class="text-lg font-bold text-stone-800 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-bar text-amber-500"></i> Billing Cycles
+                            </h3>
+                            <p class="text-sm text-stone-500">
+                                Valid enum values for the <code>billingCycle</code> field.
+                            </p>
+                        </div>
+                        <div class="flex-grow flex items-center justify-center bg-stone-50 rounded-lg p-4">
+                            <!-- Chart Container -->
+                            <div class="chart-container">
+                                <canvas id="billingChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Auth Flow Section -->
+        <section class="py-12 bg-white border-y border-stone-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col md:flex-row gap-12 items-center">
+                    <div class="md:w-1/3">
+                        <h2 class="text-2xl font-bold text-stone-900 mb-4">🔐 Secure Access</h2>
+                        <p class="text-stone-600 mb-6">
+                            This API uses <strong>JSON Web Tokens (JWT)</strong>. You must authenticate to access protected resources like creating subscriptions or managing users.
+                        </p>
+                        <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
+                            <p class="text-sm text-amber-800">
+                                <strong>Tip:</strong> The <code>Authorization</code> header is required for all endpoints except <code>/auth/*</code>.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="md:w-2/3 w-full">
+                        <!-- Interactive Auth Steps -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="p-6 bg-stone-50 rounded-xl border border-stone-200 hover:border-amber-400 transition-colors cursor-default group">
+                                <div class="w-10 h-10 bg-white border border-stone-200 rounded-full flex items-center justify-center mb-4 text-stone-400 group-hover:text-amber-600 group-hover:border-amber-600 font-bold transition-all shadow-sm">1</div>
+                                <h4 class="font-bold text-stone-900 mb-2">Register/Login</h4>
+                                <p class="text-sm text-stone-500">Send credentials to <br><code class="bg-stone-200 px-1 rounded">/api/auth/login</code></p>
+                            </div>
+                            <div class="p-6 bg-stone-50 rounded-xl border border-stone-200 hover:border-amber-400 transition-colors cursor-default group">
+                                <div class="w-10 h-10 bg-white border border-stone-200 rounded-full flex items-center justify-center mb-4 text-stone-400 group-hover:text-amber-600 group-hover:border-amber-600 font-bold transition-all shadow-sm">2</div>
+                                <h4 class="font-bold text-stone-900 mb-2">Receive Token</h4>
+                                <p class="text-sm text-stone-500">Server returns a <br><code>Bearer</code> token.</p>
+                            </div>
+                            <div class="p-6 bg-stone-50 rounded-xl border border-stone-200 hover:border-amber-400 transition-colors cursor-default group">
+                                <div class="w-10 h-10 bg-white border border-stone-200 rounded-full flex items-center justify-center mb-4 text-stone-400 group-hover:text-amber-600 group-hover:border-amber-600 font-bold transition-all shadow-sm">3</div>
+                                <h4 class="font-bold text-stone-900 mb-2">Access Data</h4>
+                                <p class="text-sm text-stone-500">Send requests with Header:<br><code class="text-xs">Authorization: Bearer ...</code></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main API Explorer -->
+        <section id="explorer" class="py-12 bg-stone-50 flex-grow">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-stone-900">API Reference Explorer</h2>
+                    <p class="text-stone-600">Select an endpoint to view details and simulate requests.</p>
+                </div>
+
+                <div class="flex flex-col lg:flex-row gap-6 h-[800px] lg:h-[600px]">
+                    
+                    <!-- Sidebar Navigation -->
+                    <div class="lg:w-1/4 bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-col">
+                        <div class="p-4 bg-stone-100 border-b border-stone-200 font-semibold text-stone-700">
+                            Endpoints
+                        </div>
+                        <div class="overflow-y-auto flex-1 p-2 space-y-1" id="nav-list">
+                            <!-- Nav items injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Content Area -->
+                    <div class="lg:w-3/4 bg-white rounded-xl shadow-sm border border-stone-200 flex flex-col overflow-hidden relative">
+                        <!-- Details View -->
+                        <div id="api-details" class="flex-1 overflow-y-auto p-8 fade-in">
+                            <!-- Dynamic Content Injected Here -->
+                            <div class="flex flex-col items-center justify-center h-full text-stone-400">
+                                <i class="fa-solid fa-arrow-left text-4xl mb-4 lg:hidden"></i>
+                                <i class="fa-solid fa-arrow-left text-4xl mb-4 hidden lg:block"></i>
+                                <p>Select an endpoint from the menu to begin.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Models Reference -->
+        <section id="models" class="py-12 bg-white border-t border-stone-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-2xl font-bold text-stone-900 mb-8">Data Models</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <!-- Subscription Model -->
+                    <div class="border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+                        <div class="bg-stone-50 px-6 py-4 border-b border-stone-200 flex justify-between items-center">
+                            <h3 class="font-bold text-stone-800">Subscription Request</h3>
+                            <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full border border-amber-200">JSON Object</span>
+                        </div>
+                        <div class="p-6">
+                            <ul class="space-y-3 text-sm">
+                                <li class="flex justify-between border-b border-stone-100 pb-2">
+                                    <span class="font-mono text-stone-600">name</span>
+                                    <span class="text-stone-500">String <span class="text-red-400">*</span></span>
+                                </li>
+                                <li class="flex justify-between border-b border-stone-100 pb-2">
+                                    <span class="font-mono text-stone-600">price</span>
+                                    <span class="text-stone-500">Double (>=0) <span class="text-red-400">*</span></span>
+                                </li>
+                                <li class="flex justify-between border-b border-stone-100 pb-2">
+                                    <span class="font-mono text-stone-600">billingCycle</span>
+                                    <span class="text-stone-500">Enum <span class="text-red-400">*</span></span>
+                                </li>
+                                <li class="flex justify-between border-b border-stone-100 pb-2">
+                                    <span class="font-mono text-stone-600">nextBillingDate</span>
+                                    <span class="text-stone-500">Date (YYYY-MM-DD)</span>
+                                </li>
+                                <li class="flex justify-between pt-2">
+                                    <span class="font-mono text-stone-600">category</span>
+                                    <span class="text-stone-500">String</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Status Codes -->
+                    <div class="border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+                        <div class="bg-stone-50 px-6 py-4 border-b border-stone-200 flex justify-between items-center">
+                            <h3 class="font-bold text-stone-800">HTTP Status Codes</h3>
+                            <span class="text-xs bg-stone-200 text-stone-600 px-2 py-1 rounded-full">Reference</span>
+                        </div>
+                        <div class="p-0">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-stone-50 text-stone-500">
+                                    <tr>
+                                        <th class="px-6 py-3 font-medium">Code</th>
+                                        <th class="px-6 py-3 font-medium">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-stone-100">
+                                    <tr class="hover:bg-stone-50"><td class="px-6 py-3 font-mono text-green-600">200</td><td class="px-6 py-3">OK - Success</td></tr>
+                                    <tr class="hover:bg-stone-50"><td class="px-6 py-3 font-mono text-green-600">201</td><td class="px-6 py-3">Created - Resource made</td></tr>
+                                    <tr class="hover:bg-stone-50"><td class="px-6 py-3 font-mono text-blue-600">204</td><td class="px-6 py-3">No Content (Delete)</td></tr>
+                                    <tr class="hover:bg-stone-50"><td class="px-6 py-3 font-mono text-amber-600">400</td><td class="px-6 py-3">Bad Request (Validation)</td></tr>
+                                    <tr class="hover:bg-stone-50"><td class="px-6 py-3 font-mono text-red-600">401</td><td class="px-6 py-3">Unauthorized (No JWT)</td></tr>
+                                    <tr class="hover:bg-stone-50"><td class="px-6 py-3 font-mono text-red-600">403</td><td class="px-6 py-3">Forbidden (No Permission)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="bg-stone-900 text-stone-400 py-8">
+            <div class="max-w-7xl mx-auto px-4 text-center">
+                <p class="mb-2">Spring Boot Subscription Tracker API Documentation</p>
+                <p class="text-xs text-stone-600">&copy; 2025 API Reference. Generated for exploration.</p>
+            </div>
+        </footer>
+
+    </div>
+
+    <script>
+        // --- Data Storage ---
+        const apiData = {
+            auth: [
+                {
+                    id: 'register',
+                    method: 'POST',
+                    path: '/api/auth/register',
+                    summary: 'Register User',
+                    access: 'Public',
+                    desc: 'Create a new user account with email, password, and name.',
+                    params: [
+                        { name: 'email', type: 'String', req: 'Yes', desc: 'Unique email address' },
+                        { name: 'password', type: 'String', req: 'Yes', desc: 'Min 8 chars' },
+                        { name: 'fullName', type: 'String', req: 'Yes', desc: 'Full Name' },
+                        { name: 'mobileNumber', type: 'Long', req: 'No', desc: '10 digits' }
+                    ],
+                    request: {
+                        "email": "user@example.com",
+                        "password": "securePassword123",
+                        "fullName": "John Doe",
+                        "mobileNumber": 9876543210
+                    },
+                    response: {
+                        "message": "User registered successfully"
+                    },
+                    status: 201
+                },
+                {
+                    id: 'login',
+                    method: 'POST',
+                    path: '/api/auth/login',
+                    summary: 'Login',
+                    access: 'Public',
+                    desc: 'Authenticate user and retrieve JWT Access Token.',
+                    params: [
+                        { name: 'email', type: 'String', req: 'Yes', desc: 'Registered email' },
+                        { name: 'password', type: 'String', req: 'Yes', desc: 'Password' }
+                    ],
+                    request: {
+                        "email": "user@example.com",
+                        "password": "securePassword123"
+                    },
+                    response: {
+                        "accessToken": "eyJhbGciOiJIUzI1NiIsIn...",
+                        "tokenType": "Bearer"
+                    },
+                    status: 200
+                }
+            ],
+            subscriptions: [
+                {
+                    id: 'getAllSubs',
+                    method: 'GET',
+                    path: '/api/subscriptions',
+                    summary: 'Get All Subscriptions',
+                    access: 'Protected',
+                    desc: 'Retrieve a list of all subscriptions for the authenticated user.',
+                    params: [],
+                    request: null,
+                    response: [
+                        { "id": 1, "name": "Netflix", "price": 15.99, "billingCycle": "MONTHLY" },
+                        { "id": 2, "name": "Spotify", "price": 9.99, "billingCycle": "MONTHLY" }
+                    ],
+                    status: 200
+                },
+                {
+                    id: 'createSub',
+                    method: 'POST',
+                    path: '/api/subscriptions',
+                    summary: 'Create Subscription',
+                    access: 'Protected',
+                    desc: 'Add a new subscription to the tracker.',
+                    params: [
+                        { name: 'name', type: 'String', req: 'Yes', desc: 'Service Name' },
+                        { name: 'price', type: 'Double', req: 'Yes', desc: 'Cost >= 0' },
+                        { name: 'billingCycle', type: 'Enum', req: 'Yes', desc: 'MONTHLY, YEARLY, ONE_TIME' }
+                    ],
+                    request: {
+                        "name": "Netflix",
+                        "price": 15.99,
+                        "billingCycle": "MONTHLY",
+                        "nextBillingDate": "2023-12-01",
+                        "category": "Entertainment"
+                    },
+                    response: {
+                        "id": 1,
+                        "name": "Netflix",
+                        "price": 15.99,
+                        "billingCycle": "MONTHLY",
+                        "category": "Entertainment"
+                    },
+                    status: 201
+                },
+                {
+                    id: 'getSub',
+                    method: 'GET',
+                    path: '/api/subscriptions/{id}',
+                    summary: 'Get Subscription by ID',
+                    access: 'Protected',
+                    desc: 'Get details of a specific subscription.',
+                    params: [],
+                    request: null,
+                    response: { "id": 1, "name": "Netflix", "price": 15.99 },
+                    status: 200
+                },
+                {
+                    id: 'updateSub',
+                    method: 'PUT',
+                    path: '/api/subscriptions/{id}',
+                    summary: 'Update Subscription',
+                    access: 'Protected',
+                    desc: 'Update details of an existing subscription.',
+                    params: [],
+                    request: { "price": 17.99 },
+                    response: { "id": 1, "name": "Netflix", "price": 17.99 },
+                    status: 200
+                },
+                {
+                    id: 'deleteSub',
+                    method: 'DELETE',
+                    path: '/api/subscriptions/{id}',
+                    summary: 'Delete Subscription',
+                    access: 'Protected',
+                    desc: 'Remove a subscription permanently.',
+                    params: [],
+                    request: null,
+                    response: null,
+                    status: 204
+                }
+            ],
+            users: [
+                {
+                    id: 'getUsers',
+                    method: 'GET',
+                    path: '/api/users',
+                    summary: 'Get All Users',
+                    access: 'Admin',
+                    desc: 'Fetch users with pagination and sorting. Default page=0, size=10.',
+                    params: [
+                        { name: 'page', type: 'Int', req: 'No', desc: 'Page number' },
+                        { name: 'size', type: 'Int', req: 'No', desc: 'Items per page' }
+                    ],
+                    request: null,
+                    response: {
+                        "content": [{ "id": 1, "email": "john@example.com" }],
+                        "totalPages": 5,
+                        "totalElements": 25
+                    },
+                    status: 200
+                },
+                {
+                    id: 'deleteUser',
+                    method: 'DELETE',
+                    path: '/api/users/{id}',
+                    summary: 'Delete User',
+                    access: 'Admin',
+                    desc: 'Remove a user from the system.',
+                    params: [],
+                    request: null,
+                    response: null,
+                    status: 204
+                }
+            ]
+        };
+
+        // --- Core Interaction Logic ---
+        
+        // Scroll helper
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Render Navigation Sidebar
+        function renderNavigation() {
+            const navContainer = document.getElementById('nav-list');
+            let html = '';
+
+            const groups = [
+                { key: 'auth', label: 'Auth API', icon: 'fa-lock' },
+                { key: 'subscriptions', label: 'Subscriptions API', icon: 'fa-credit-card' },
+                { key: 'users', label: 'Users API', icon: 'fa-users' }
+            ];
+
+            groups.forEach(group => {
+                html += `<div class="mt-4 mb-2 px-4 text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid ${group.icon}"></i> ${group.label}
+                </div>`;
+                
+                apiData[group.key].forEach(endpoint => {
+                    const methodColor = getMethodColor(endpoint.method);
+                    html += `
+                        <button onclick="renderEndpointDetail('${group.key}', '${endpoint.id}')" 
+                                class="w-full text-left px-4 py-3 hover:bg-stone-50 border-l-4 border-transparent hover:border-stone-300 transition-all group flex items-center justify-between">
+                            <span class="text-sm font-medium text-stone-700 group-hover:text-amber-700 truncate mr-2">${endpoint.summary}</span>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-100 ${methodColor}">${endpoint.method}</span>
+                        </button>
+                    `;
+                });
+            });
+
+            navContainer.innerHTML = html;
+        }
+
+        // Helper: Get color class for HTTP methods
+        function getMethodColor(method) {
+            switch(method) {
+                case 'GET': return 'text-blue-600 bg-blue-50';
+                case 'POST': return 'text-green-600 bg-green-50';
+                case 'PUT': return 'text-amber-600 bg-amber-50';
+                case 'DELETE': return 'text-red-600 bg-red-50';
+                default: return 'text-stone-600';
+            }
+        }
+
+        // Render Main Details View
+        function renderEndpointDetail(groupKey, endpointId) {
+            const data = apiData[groupKey].find(e => e.id === endpointId);
+            if (!data) return;
+
+            const container = document.getElementById('api-details');
+            const methodColorBadge = getMethodColor(data.method).replace('text-', 'bg-').replace('bg-', 'text-white bg-opacity-90 '); 
+            // Simple mapping tweak for badge bg
+
+            let paramsTable = '';
+            if (data.params && data.params.length > 0) {
+                paramsTable = `
+                    <div class="mt-6">
+                        <h4 class="text-sm font-bold text-stone-900 mb-3">Request Parameters/Body</h4>
+                        <div class="overflow-x-auto border border-stone-200 rounded-lg">
+                            <table class="min-w-full divide-y divide-stone-200">
+                                <thead class="bg-stone-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-stone-500 uppercase">Field</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-stone-500 uppercase">Type</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-stone-500 uppercase">Req</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-stone-500 uppercase">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-stone-200">
+                                    ${data.params.map(p => `
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm font-mono text-stone-700">${p.name}</td>
+                                            <td class="px-4 py-2 text-sm text-stone-500">${p.type}</td>
+                                            <td class="px-4 py-2 text-sm text-stone-500">${p.req}</td>
+                                            <td class="px-4 py-2 text-sm text-stone-500">${p.desc}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const requestBlock = data.request ? 
+                `<div class="mt-4">
+                    <p class="text-xs font-bold text-stone-500 uppercase mb-1">Request Body (JSON)</p>
+                    <pre class="bg-stone-800 text-stone-100 p-3 rounded-lg text-xs overflow-x-auto code-block">${JSON.stringify(data.request, null, 2)}</pre>
+                 </div>` : '';
+
+            const responseBlock = data.response ? 
+                JSON.stringify(data.response, null, 2) : 
+                (data.status === 204 ? '// No Content' : '{}');
+
+            const html = `
+                <div class="fade-in max-w-3xl">
+                    <!-- Header -->
+                    <div class="flex items-start justify-between border-b border-stone-200 pb-4 mb-4">
+                        <div>
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${data.method === 'GET' ? 'bg-blue-100 text-blue-800' : data.method === 'POST' ? 'bg-green-100 text-green-800' : data.method === 'DELETE' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}">${data.method}</span>
+                                <h3 class="text-xl font-bold text-stone-900">${data.summary}</h3>
+                            </div>
+                            <code class="text-sm bg-stone-100 px-2 py-1 rounded text-stone-600 font-mono">${data.path}</code>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-medium px-2 py-1 rounded-full border ${data.access === 'Public' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'}">
+                                ${data.access === 'Public' ? '<i class="fa-solid fa-lock-open mr-1"></i> Public' : '<i class="fa-solid fa-lock mr-1"></i> ' + data.access}
+                            </span>
+                        </div>
+                    </div>
+
+                    <p class="text-stone-600">${data.desc}</p>
+
+                    ${paramsTable}
+
+                    <!-- Simulation Playground -->
+                    <div class="mt-8 bg-stone-50 border border-stone-200 rounded-xl p-5">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-sm font-bold text-stone-800 flex items-center gap-2">
+                                <i class="fa-solid fa-flask text-purple-500"></i> Simulator
+                            </h4>
+                            <button onclick="simulateRequest(this)" class="px-4 py-1.5 bg-stone-800 text-white text-sm rounded shadow hover:bg-black transition-all flex items-center gap-2">
+                                <i class="fa-solid fa-play text-xs"></i> Send Request
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Request Side -->
+                            <div>
+                                ${requestBlock}
+                                ${!data.request ? '<p class="text-xs text-stone-400 italic mt-6">No request body required.</p>' : ''}
+                            </div>
+
+                            <!-- Response Side (Hidden initially or dimmed) -->
+                            <div class="relative">
+                                <p class="text-xs font-bold text-stone-500 uppercase mb-1">Response (${data.status})</p>
+                                <div id="response-output" class="bg-white border border-stone-200 p-3 rounded-lg text-xs overflow-x-auto code-block h-full min-h-[100px] text-stone-400">
+                                    // Click 'Send Request' to see response...
+                                </div>
+                                <div id="response-actual" class="hidden">
+                                    <pre class="text-white">${responseBlock}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Simulate Request Logic
+        function simulateRequest(btn) {
+            const output = btn.closest('.mt-8').querySelector('#response-output');
+            const actual = btn.closest('.mt-8').querySelector('#response-actual').innerHTML;
+            
+            // Loading state
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> Sending...';
+            output.innerHTML = '<span class="text-amber-500">Waiting for server...</span>';
+            output.classList.add('bg-stone-50');
+            output.classList.remove('bg-white');
+
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-play text-xs"></i> Send Request';
+                
+                output.classList.remove('bg-stone-50', 'text-stone-400');
+                output.classList.add('bg-stone-900', 'text-green-400');
+                output.innerHTML = actual;
+            }, 600);
+        }
+
+        // --- Chart Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavigation();
+            // Load first item by default
+            renderEndpointDetail('auth', 'register');
+
+            // Chart 1: Categories
+            const ctxCat = document.getElementById('categoriesChart').getContext('2d');
+            new Chart(ctxCat, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Entertainment', 'Work', 'Utilities', 'Learning', 'Health'],
+                    datasets: [{
+                        data: [40, 25, 20, 10, 5],
+                        backgroundColor: ['#d97706', '#78716c', '#a8a29e', '#e7e5e4', '#f5f5f4'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { font: { family: 'Inter' } } }
+                    }
+                }
+            });
+
+            // Chart 2: Billing Cycles
+            const ctxBill = document.getElementById('billingChart').getContext('2d');
+            new Chart(ctxBill, {
+                type: 'bar',
+                data: {
+                    labels: ['MONTHLY', 'YEARLY', 'ONE_TIME'],
+                    datasets: [{
+                        label: 'Frequency',
+                        data: [65, 30, 5],
+                        backgroundColor: ['#d97706', '#a8a29e', '#e7e5e4'],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>

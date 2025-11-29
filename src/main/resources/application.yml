@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: SubSentry
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/your-db-name
+    username: your-db-username
+    password: your-db-password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      mode: always
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your-email@gmail.com
+    password: password-here
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# --- JWT Properties ---
+# A strong, random, secret key.
+app:
+  jwt:
+    secret: aVeryLongAndStrongSecretKeyForYourSubSentryApp12345
+
+  # Token expiration time in milliseconds (e.g., 1 hour)
+    expiration-ms: 3600000
+
+# Cron expression for daily 8 am
+scheduler:
+  cron: "0 0 8 * * ?"
